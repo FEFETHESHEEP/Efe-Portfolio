@@ -1,0 +1,62 @@
+import random
+starter = 100
+print(f"The amount of starting money you have is £{starter}")
+def roll_variables():
+    x = random.randint(1, 10)
+    y = random.randint(1, 10)
+    z = random.randint(1, 10)
+    betting = 0
+    return x, y, z
+
+x, y, z = roll_variables()
+print("Welcome to this lovely game, enjoy!")
+betting = int(input("Enter how much you would like to bet:\n"))
+print(f"{x} {y} {z}")
+
+computelimit = 10
+while True:
+  equals = 0
+  computelimit -= 1
+  if computelimit < 0:
+    break
+
+  
+  if x == y:
+    equals = equals + 1
+  if y == z:
+    equals = equals + 1
+  if x == z:
+    equals = equals + 1
+
+  if equals == 0:
+    print("Unlucky, want to go again?")
+    starter = starter - betting
+    print(starter)
+    
+    
+        
+  elif equals == 1:
+    print("Oof almost there! Want to go again?")
+    betting = betting * 2
+    starter = starter + betting
+    print(starter)
+    
+      
+  else:
+    print("WOW that's a nice roll! Want to go again?")
+    betting = betting * 5
+    starter = starter + betting
+    print(starter)
+    
+    
+  roll = input("Roll: Y/N ").strip().lower()
+  if roll != "y":
+    print("Thanks for playing! See you soon :)")
+    break
+
+  x, y, z = roll_variables()
+  betting = int(input("Enter how much you would like to bet:\n"))
+  print(f"{x} {y} {z}")
+    
+if starter <= 0:
+  print("Well you dont have any more sorry bud :(")

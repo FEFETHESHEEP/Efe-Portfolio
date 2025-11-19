@@ -1,0 +1,131 @@
+bellow is the pseudocode of the first programme we would like you to write in Python
+
+
+DATA:
+airports = {
+    "IRFD": {
+        "name": "Greater Rockford",
+        "lat": 42.275, "lon": -89.092,
+        "runway_surface": "Asphalt",
+        "runway_width": "45m",
+        "freqs": {"Tower": "118.400", "Ground": "121.900", "Approach": "125.350"},
+        "notams": ["RWY 27 PAPI offline 2200–0400Z", "Taxiway C resurfacing"]
+    },
+    "IMLR": {
+        "name": "Mellor International",
+        "lat": 43.101, "lon": -87.921,
+        "runway_surface": "Concrete",
+        "runway_width": "60m",
+        "freqs": {"Tower": "118.750", "Ground": "121.600", "Approach": "124.900"},
+        "notams": ["High bird activity near RWY 30", "Gate 4 closed for maintenance"]
+    },
+    "ITRC": {
+        "name": "Training Centre",
+        "lat": 42.900, "lon": -88.300,
+        "runway_surface": "Asphalt",
+        "runway_width": "25m",
+        "freqs": {},
+        "notams": ["Training circuits active daily"]
+    }
+}
+CONFIG:
+  cruise_speed_kmh = 850       
+  earth_radius_km   = 6371    
+
+FUNCTION calc_distance(dep, arr):
+  lat1 = radians(dep.lat)
+  lon1 = radians(dep.lon)
+  lat2 = radians(arr.lat)
+  lon2 = radians(arr.lon)
+  central_angle = acos( sin(lat1)*sin(lat2) + cos(lat1)*cos(lat2)*cos(lon2 - lon1) )
+  distance_km = earth_radius_km * central_angle
+  return distance_km
+
+FUNCTION calc_heading(dep, arr):
+  lat1 = radians(dep.lat); lon1 = radians(dep.lon)
+  lat2 = radians(arr.lat); lon2 = radians(arr.lon)
+  dlon = lon2 - lon1
+  x = sin(dlon) * cos(lat2)
+  y = cos(lat1)*sin(lat2) - sin(lat1)*cos(lat2)*cos(dlon)
+  brng_rad = atan2(x, y)
+  brng_deg = (degrees(brng_rad) + 360) % 360
+  return round(brng_deg)   
+
+FUNCTION generate_waypoints(dep, arr):
+  return [
+    { id: "DEP", desc: dep.name },
+    { id: "CRZ1", desc: "Cruise waypoint 1" },
+    { id: "CRZ2", desc: "Cruise waypoint 2" },
+    { id: "APP", desc: "Approach to " + arr.name },
+    { id: "ARR", desc: arr.name }
+  ]
+
+COMMAND /flightplan <departure_code> <arrival_code>:
+  departure_code = uppercase(trim(input.departure))
+  arrival_code   = uppercase(trim(input.arrival))
+
+  if departure_code not in airports or arrival_code not in airports:
+    reply_ephemeral("❌ Unknown airport code. Try one of: " + join(keys(airports), ", "))
+    return
+
+  dep = airports[departure_code]
+  arr = airports[arrival_code]
+
+  distance_km = calc_distance(dep, arr)
+  heading_deg = calc_heading(dep, arr)
+  flight_time_hours = distance_km / cruise_speed_kmh
+  waypoints = generate_waypoints(dep, arr)
+
+  distance_text = format("{:,.0f} km", distance_km)       
+  heading_text  = format("{}°", heading_deg)
+  time_text     = format("{:.1f} hrs", flight_time_hours)
+  altitude_text = "FL320 (32,000 ft)"
+
+  message_text = concat_lines([
+    "🛫 Flight Plan: " + departure_code + " → " + arrival_code,
+    dep.name + " → " + arr.name,
+    "Distance: " + distance_text,
+    "Heading: " + heading_text,
+    "Est. Flight Time: " + time_text,
+    "Cruise Altitude: " + altitude_text,
+    "",
+    "Waypoints:",
+    "• DEP – " + dep.name,
+    "• CRZ1 – Cruise waypoint 1",
+    "• CRZ2 – Cruise waypoint 2",
+    "• APP – Approach to " + arr.name,
+    "• ARR – " + arr.name
+  ])
+
+  send_reply(interaction, message_text)
+
+ERROR HANDLING:
+  - Validate input codes and return helpful message.
+  - Catch math/domain errors (e.g., acos domain) and fallback to haversine if needed.
+  - Round and format numeric output for readability.
+
+PERMISSIONS & SETUP:
+  - Use discord.py (or discord.js) with intents to register slash commands.
+  - Register /flightplan with two required string options: departure, arrival.
+  - Sync command tree on ready.
+
+EXAMPLE OUTPUT (for /flightplan GR IZ):
+  🛫 Flight Plan: GR → IZ
+  Greater Rockford → Izolirani International
+  Distance: 14,542 km
+  Heading: 268°
+  Est. Flight Time: 17.1 hrs
+  Cruise Altitude: FL320
+
+  Waypoints:
+  • DEP – Greater Rockford
+  • CRZ1 – Cruise waypoint 1
+  • CRZ2 – Cruise waypoint 2
+  • APP – Approach to Izolirani International
+  • ARR – Izolirani International
+
+NOTES / OPTIONAL FEATURES (future):
+  - Add ICAO/IATA mapping, more airports, or live navdata.
+  - Produce an Embed with fields for nicer display.
+  - Allow optional flags: cruise speed override, altitude, exact waypoint lat/lon generation.
+  - Add caching for repeated calculations.
